@@ -13,7 +13,7 @@ yarn-error.log*
 dist/
 build/
 .next/
-
+.env.local
 # OS files
 .DS_Store
 Thumbs.db
