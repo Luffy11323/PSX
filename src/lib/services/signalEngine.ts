@@ -1,6 +1,7 @@
 // Signal Engine — Orchestrates all 3 layers in parallel
 // Non-blocking: all layers always run, results always stored
 // Consensus scoring: 1/3, 2/3, 3/3
+import 'server-only'
 
 import { runLayer1, Verdict } from './layer1'
 import { runLayer2 } from './layer2'
