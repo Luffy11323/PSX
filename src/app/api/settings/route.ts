@@ -1,9 +1,21 @@
-// /api/settings — User app settings
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@supabase/ssr'
 
-export async function GET() {
-  const supabase = await createClient()
+function getSupabase(req: NextRequest) {
+  return createServerClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    {
+      cookies: {
+        getAll() { return req.cookies.getAll() },
+        setAll() {},
+      },
+    }
+  )
+}
+
+export async function GET(req: NextRequest) {
+  const supabase = getSupabase(req)
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -18,18 +30,11 @@ export async function GET() {
 }
 
 export async function PATCH(req: NextRequest) {
-  const supabase = await createClient()
+  const supabase = getSupabase(req)
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const body = await req.json()
-
-  // Validate poll interval
-  if (body.poll_interval_seconds !== undefined) {
-    if (body.poll_interval_seconds < 60 || body.poll_interval_seconds > 120) {
-      return NextResponse.json({ error: 'Poll interval must be 60-120 seconds' }, { status: 400 })
-    }
-  }
 
   const { data, error } = await supabase
     .from('app_settings')
