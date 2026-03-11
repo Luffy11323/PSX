@@ -2,6 +2,23 @@
 
 import { useState, useEffect } from 'react'
 import { toast } from 'sonner'
+import { createClient } from '@/lib/supabase/client'
+
+const supabase = createClient()
+
+async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  return fetch(url, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+}
 
 const STYLES = `
   * { box-sizing: border-box; }
@@ -265,14 +282,13 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
-    fetch('/api/settings').then(r => r.json()).then(({ data }) => setSettings(data))
+    fetchWithAuth('/api/settings').then(r => r.json()).then(({ data }) => setSettings(data))
   }, [])
 
   const save = async () => {
     setSaving(true)
-    const res = await fetch('/api/settings', {
+    const res = await fetchWithAuth('/api/settings', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(settings),
     })
     if (res.ok) toast.success('Settings saved')

@@ -1,18 +1,18 @@
 import type { Metadata } from 'next'
-import { Space_Mono, Bebas_Neue } from 'next/font/google'
+import { Bricolage_Grotesque, DM_Mono } from 'next/font/google'
 import './globals.css'
 import { Toaster } from 'sonner'
 
-const spaceMono = Space_Mono({
+const bricolage = Bricolage_Grotesque({
   subsets: ['latin'],
-  weight: ['400', '700'],
-  variable: '--font-mono',
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-sans',
 })
 
-const bebasNeue = Bebas_Neue({
+const dmMono = DM_Mono({
   subsets: ['latin'],
-  weight: ['400'],
-  variable: '--font-display',
+  weight: ['300', '400', '500'],
+  variable: '--font-mono',
 })
 
 export const metadata: Metadata = {
@@ -22,18 +22,21 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={`${spaceMono.variable} ${bebasNeue.variable}`}>
-      <body className="bg-sentinel-bg text-sentinel-text font-mono antialiased">
+    <html lang="en" className={`${bricolage.variable} ${dmMono.variable}`}>
+      <body style={{ background: '#f7f6f3', fontFamily: 'var(--font-sans, system-ui)', margin: 0 }}>
         {children}
         <Toaster
-          theme="dark"
+          position="bottom-right"
           toastOptions={{
             style: {
-              background: '#141d35',
-              border: '1px solid #1e2d4a',
-              color: '#e2e8f0',
-              fontFamily: 'var(--font-mono)',
-            }
+              background: '#ffffff',
+              border: '1px solid #e8e6e0',
+              color: '#1a1917',
+              fontFamily: 'var(--font-sans, system-ui)',
+              fontSize: '13px',
+              borderRadius: '12px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.08)',
+            },
           }}
         />
       </body>

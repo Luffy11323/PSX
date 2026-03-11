@@ -182,10 +182,7 @@ export default function Dashboard() {
     return acc
   }, {} as Record<string, SignalLog>)
 
-  return (
-    <>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,300;12..96,400;12..96,500;12..96,600;12..96,700&family=DM+Mono:wght@300;400;500&display=swap');
+  const DASH_STYLES = `
 
         * { box-sizing: border-box; }
 
@@ -526,7 +523,11 @@ export default function Dashboard() {
         .signals-list { display: flex; flex-direction: column; gap: 10px; }
 
         .empty-signals { text-align: center; color: var(--muted); font-size: 13px; padding: 60px 0; }
-      `}</style>
+  `
+
+  return (
+    <>
+      <style dangerouslySetInnerHTML={{ __html: DASH_STYLES }} />
 
       <div className="dash-root">
         <header className="dash-header">
