@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
+import { gsap } from 'gsap'
+import { useGSAP } from '@gsap/react'
 
 const supabase = createClient()
 
@@ -16,6 +18,12 @@ export default function LoginPage() {
   const [mounted, setMounted] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const router = useRouter()
+
+  // Refs for GSAP animation targets
+  const leftPanelRef = useRef<HTMLDivElement>(null)
+  const brandRef = useRef<HTMLDivElement>(null)
+  const welcomeRef = useRef<HTMLDivElement>(null)
+  const featuresRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     setMounted(true)
@@ -91,6 +99,63 @@ export default function LoginPage() {
     }
   }, [])
 
+  // GSAP animations for left panel - runs once on mount
+  useGSAP(() => {
+    if (!leftPanelRef.current) return
+
+    const tl = gsap.timeline({ defaults: { ease: 'power3.out' } })
+
+    // Panel slide-in from left
+    tl.from(leftPanelRef.current, {
+      opacity: 0,
+      x: -80,
+      duration: 1.4,
+    })
+
+    // Brand mark reveal + scale
+    if (brandRef.current) {
+      tl.from(brandRef.current, {
+        opacity: 0,
+        y: 50,
+        scale: 0.9,
+        duration: 1.1,
+      }, '-=1.0')
+    }
+
+    // Welcome block - stagger title and desc
+    if (welcomeRef.current) {
+      tl.from(welcomeRef.current.querySelectorAll('div, p'), {
+        opacity: 0,
+        y: 35,
+        stagger: 0.18,
+        duration: 1,
+      }, '-=0.8')
+    }
+
+    // Features - stagger cards with slight rotation & scale
+    if (featuresRef.current) {
+      tl.from(featuresRef.current.children, {
+        opacity: 0,
+        y: 60,
+        scale: 0.92,
+        rotation: -4,
+        stagger: 0.22,
+        duration: 1.2,
+      }, '-=0.7')
+    }
+
+    // Continuous gentle breathing on brand logo
+    if (brandRef.current) {
+      gsap.to(brandRef.current.querySelector('.brand-logo'), {
+        scale: 1.08,
+        duration: 5,
+        repeat: -1,
+        yoyo: true,
+        ease: 'sine.inOut',
+      })
+    }
+  }, []) // empty deps = run once
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -152,16 +217,8 @@ export default function LoginPage() {
         }
 
         .brand-mark {
-          opacity: 0;
-          transform: translateY(24px);
-          animation: fade-up 0.8s ease 0.1s forwards, subtle-float 6s ease-in-out infinite alternate;
           text-align: center;
           margin-bottom: 48px;
-        }
-
-        @keyframes subtle-float {
-          0% { transform: translateY(0) scale(1); }
-          100% { transform: translateY(-10px) scale(1.015); }
         }
 
         .brand-logo {
@@ -201,9 +258,6 @@ export default function LoginPage() {
         }
 
         .welcome-block {
-          opacity: 0;
-          transform: translateY(24px);
-          animation: fade-up 0.8s ease 0.25s forwards;
           text-align: center;
           max-width: 360px;
         }
@@ -220,12 +274,6 @@ export default function LoginPage() {
           background: linear-gradient(135deg, #c084fc, #a78bfa, #7c3aed);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
-          animation: glow-pulse 4s ease-in-out infinite alternate;
-        }
-
-        @keyframes glow-pulse {
-          0% { text-shadow: 0 0 12px rgba(192, 132, 252, 0.5); }
-          100% { text-shadow: 0 0 32px rgba(167, 139, 250, 0.8); }
         }
 
         .welcome-desc {
@@ -242,8 +290,6 @@ export default function LoginPage() {
           gap: 18px;
           width: 100%;
           max-width: 340px;
-          opacity: 0;
-          animation: fade-up 1s ease 0.4s forwards;
         }
 
         .feature-item {
@@ -494,15 +540,15 @@ export default function LoginPage() {
       <canvas ref={canvasRef} className="login-canvas" />
 
       <div className="login-root">
-        {/* LEFT */}
-        <div className="login-left">
-          <div className="brand-mark">
+        {/* LEFT - GSAP animated */}
+        <div className="login-left" ref={leftPanelRef}>
+          <div className="brand-mark" ref={brandRef}>
             <div className="brand-logo">📡</div>
             <div className="brand-title">Sentinel</div>
             <div className="brand-sub">PSX Intelligence System</div>
           </div>
 
-          <div className="welcome-block">
+          <div className="welcome-block" ref={welcomeRef}>
             <div className="welcome-title">
               Welcome<br />back to <span>Sentinel</span>
             </div>
@@ -511,7 +557,7 @@ export default function LoginPage() {
             </p>
           </div>
 
-          <div className="features">
+          <div className="features" ref={featuresRef}>
             <div className="feature-item">
               <div className="feature-icon purple">🧠</div>
               <div>
