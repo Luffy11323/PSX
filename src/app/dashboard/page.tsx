@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import LiveChart from '@/components/LiveChart'
@@ -41,6 +41,22 @@ interface ATHData {
   three_year_high: number
 }
 
+const supabase = createClient()
+
+async function fetchWithAuth(url: string, options: RequestInit = {}) {
+  const { data: { session } } = await supabase.auth.getSession()
+  const token = session?.access_token
+  return fetch(url, {
+    ...options,
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {}),
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+  })
+}
+
 export default function Dashboard() {
   const [watchlist, setWatchlist] = useState<WatchlistItem[]>([])
   const [selectedSymbol, setSelectedSymbol] = useState<string | null>(null)
@@ -53,11 +69,10 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<'chart' | 'signals' | 'all_signals'>('chart')
   const [stats, setStats] = useState({ total: 0, alerts: 0, breakouts: 0, strong: 0 })
   const router = useRouter()
-  const supabase = createClient()
 
   useEffect(() => {
     loadData()
-    const interval = setInterval(loadSignals, 60000) // refresh signals every minute
+    const interval = setInterval(loadSignals, 60000)
     return () => clearInterval(interval)
   }, [])
 
@@ -65,19 +80,18 @@ export default function Dashboard() {
     setLoading(true)
     try {
       const [wlRes, signalRes] = await Promise.all([
-        fetch('/api/watchlist'),
-        fetch('/api/signals?limit=100'),
+        fetchWithAuth('/api/watchlist'),
+        fetchWithAuth('/api/signals?limit=100'),
       ])
       const [wl, sig] = await Promise.all([wlRes.json(), signalRes.json()])
 
       setWatchlist(wl.data || [])
       setSignals(sig.data || [])
 
-      if (wl.data?.length > 0 && !selectedSymbol) {
-        setSelectedSymbol(wl.data[0].symbol)
+      if (wl.data?.length > 0) {
+        setSelectedSymbol((prev) => prev ?? wl.data[0].symbol)
       }
 
-      // Stats
       const sigData = sig.data || []
       setStats({
         total: sigData.length,
@@ -86,7 +100,6 @@ export default function Dashboard() {
         strong: sigData.filter((s: SignalLog) => s.consensus_score === 3).length,
       })
 
-      // Load ATH data for all symbols
       const symbols = (wl.data || []).map((w: WatchlistItem) => w.symbol)
       await loadATHData(symbols)
     } catch (err) {
@@ -97,7 +110,7 @@ export default function Dashboard() {
   }
 
   const loadSignals = async () => {
-    const res = await fetch('/api/signals?limit=100')
+    const res = await fetchWithAuth('/api/signals?limit=100')
     const { data } = await res.json()
     setSignals(data || [])
   }
@@ -107,7 +120,7 @@ export default function Dashboard() {
     await Promise.all(
       symbols.map(async (sym) => {
         try {
-          const res = await fetch(`/api/stocks/${sym}/price`)
+          const res = await fetchWithAuth(`/api/stocks/${sym}/price`)
           const { allTimeHigh } = await res.json()
           if (allTimeHigh) results[sym] = allTimeHigh
         } catch {}
@@ -120,9 +133,8 @@ export default function Dashboard() {
     if (!newSymbol.trim()) return
     setAddingStock(true)
     try {
-      const res = await fetch('/api/watchlist', {
+      const res = await fetchWithAuth('/api/watchlist', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ symbol: newSymbol.trim().toUpperCase() }),
       })
       if (!res.ok) throw new Error('Failed to add')
@@ -138,7 +150,7 @@ export default function Dashboard() {
   }
 
   const handleRemoveStock = async (id: string, symbol: string) => {
-    await fetch(`/api/watchlist?id=${id}`, { method: 'DELETE' })
+    await fetchWithAuth(`/api/watchlist?id=${id}`, { method: 'DELETE' })
     toast.success(`${symbol} removed`)
     loadData()
   }
@@ -146,9 +158,8 @@ export default function Dashboard() {
   const handleUpdateLines = async (symbol: string, buyLine: number | null, sellLine: number | null) => {
     const item = watchlist.find(w => w.symbol === symbol)
     if (!item) return
-    await fetch('/api/watchlist', {
+    await fetchWithAuth('/api/watchlist', {
       method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: item.id, buy_line: buyLine, sell_line: sellLine }),
     })
     setWatchlist(prev => prev.map(w =>
@@ -165,7 +176,6 @@ export default function Dashboard() {
   const selectedSignals = signals.filter(s => s.symbol === selectedSymbol)
   const ath = selectedSymbol ? athData[selectedSymbol] : null
 
-  // Latest signal per symbol for watchlist
   const latestSignals = watchlist.reduce((acc, item) => {
     const sig = signals.find(s => s.symbol === item.symbol)
     if (sig) acc[item.symbol] = sig
@@ -174,7 +184,6 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-sentinel-bg scanline">
-      {/* Top Nav */}
       <header className="border-b border-sentinel-border bg-sentinel-surface px-6 py-3 flex items-center justify-between sticky top-0 z-50">
         <div className="flex items-center gap-4">
           <span className="font-display text-2xl text-sentinel-accent tracking-widest">SENTINEL</span>
@@ -184,7 +193,6 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Stats bar */}
         <div className="hidden md:flex items-center gap-6 text-xs">
           <div className="text-center">
             <div className="text-sentinel-subtext tracking-widest">SIGNALS</div>
@@ -204,23 +212,21 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="text-xs text-sentinel-subtext hover:text-sentinel-red tracking-widest uppercase transition-colors"
-        >
-          LOGOUT
-        </button>
+        <div className="flex items-center gap-4">
+          <a href="/dashboard/settings" className="text-xs text-sentinel-subtext hover:text-sentinel-accent tracking-widest uppercase transition-colors">
+            SETTINGS
+          </a>
+          <button onClick={handleLogout} className="text-xs text-sentinel-subtext hover:text-sentinel-red tracking-widest uppercase transition-colors">
+            LOGOUT
+          </button>
+        </div>
       </header>
 
       <div className="flex h-[calc(100vh-57px)]">
-        {/* LEFT SIDEBAR — Watchlist */}
         <aside className="w-64 shrink-0 bg-sentinel-surface border-r border-sentinel-border flex flex-col">
           <div className="px-4 py-3 border-b border-sentinel-border flex items-center justify-between">
             <span className="text-xs tracking-[3px] text-sentinel-subtext uppercase">WATCHLIST</span>
-            <button
-              onClick={() => setShowAddForm(!showAddForm)}
-              className="text-sentinel-accent hover:text-white text-lg leading-none transition-colors"
-            >
+            <button onClick={() => setShowAddForm(!showAddForm)} className="text-sentinel-accent hover:text-white text-lg leading-none transition-colors">
               {showAddForm ? '✕' : '+'}
             </button>
           </div>
@@ -248,7 +254,7 @@ export default function Dashboard() {
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="p-4 space-y-2">
-                {[1,2,3].map(i => <div key={i} className="skeleton h-16 rounded" />)}
+                {[1, 2, 3].map(i => <div key={i} className="skeleton h-16 rounded" />)}
               </div>
             ) : watchlist.length === 0 ? (
               <div className="p-6 text-center text-xs text-sentinel-muted">
@@ -263,14 +269,11 @@ export default function Dashboard() {
                 const latest = latestSignals[item.symbol]
                 const score = latest?.consensus_score ?? -1
                 const isSelected = selectedSymbol === item.symbol
-
                 return (
                   <div
                     key={item.id}
                     onClick={() => setSelectedSymbol(item.symbol)}
-                    className={`p-3 border-b border-sentinel-border cursor-pointer transition-all group ${
-                      isSelected ? 'bg-sentinel-card border-l-2 border-l-sentinel-accent' : 'hover:bg-sentinel-card'
-                    }`}
+                    className={`p-3 border-b border-sentinel-border cursor-pointer transition-all group ${isSelected ? 'bg-sentinel-card border-l-2 border-l-sentinel-accent' : 'hover:bg-sentinel-card'}`}
                   >
                     <div className="flex items-start justify-between">
                       <div>
@@ -280,29 +283,17 @@ export default function Dashboard() {
                       <button
                         onClick={e => { e.stopPropagation(); handleRemoveStock(item.id, item.symbol) }}
                         className="opacity-0 group-hover:opacity-100 text-sentinel-red text-xs hover:text-red-400 transition-all"
-                      >
-                        ✕
-                      </button>
+                      >✕</button>
                     </div>
-
-                    {/* Score indicators */}
                     <div className="flex items-center gap-1.5 mt-2">
                       {latest ? (
                         <>
                           <div className="flex gap-0.5">
-                            {[1,2,3].map(i => (
-                              <div key={i} className={`w-5 h-1 rounded-full ${
-                                i <= score
-                                  ? score === 3 ? 'bg-sentinel-green' : score === 2 ? 'bg-sentinel-accent' : 'bg-sentinel-yellow'
-                                  : 'bg-sentinel-border'
-                              }`} />
+                            {[1, 2, 3].map(i => (
+                              <div key={i} className={`w-5 h-1 rounded-full ${i <= score ? score === 3 ? 'bg-sentinel-green' : score === 2 ? 'bg-sentinel-accent' : 'bg-sentinel-yellow' : 'bg-sentinel-border'}`} />
                             ))}
                           </div>
-                          <span className={`text-xs font-bold ${
-                            score === 3 ? 'text-sentinel-green' :
-                            score === 2 ? 'text-sentinel-accent' :
-                            score === 1 ? 'text-sentinel-yellow' : 'text-sentinel-muted'
-                          }`}>
+                          <span className={`text-xs font-bold ${score === 3 ? 'text-sentinel-green' : score === 2 ? 'text-sentinel-accent' : score === 1 ? 'text-sentinel-yellow' : 'text-sentinel-muted'}`}>
                             {score >= 0 ? `${score}/3` : '--'}
                           </span>
                           {latest.is_alltime_breakout && <span className="text-xs">🏆</span>}
@@ -312,8 +303,6 @@ export default function Dashboard() {
                         <span className="text-xs text-sentinel-muted">Awaiting signal...</span>
                       )}
                     </div>
-
-                    {/* Lines */}
                     <div className="flex gap-3 mt-1.5 text-xs">
                       {item.buy_line && <span className="text-sentinel-green">B:{item.buy_line}</span>}
                       {item.sell_line && <span className="text-sentinel-red">S:{item.sell_line}</span>}
@@ -325,7 +314,6 @@ export default function Dashboard() {
           </div>
         </aside>
 
-        {/* MAIN CONTENT */}
         <main className="flex-1 overflow-y-auto p-5 space-y-5">
           {!selectedSymbol ? (
             <div className="h-full flex items-center justify-center">
@@ -336,26 +324,18 @@ export default function Dashboard() {
             </div>
           ) : (
             <>
-              {/* Tabs */}
               <div className="flex gap-2">
                 {(['chart', 'signals', 'all_signals'] as const).map(tab => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`px-4 py-2 text-xs rounded tracking-widest uppercase transition-all ${
-                      activeTab === tab
-                        ? 'bg-sentinel-accent text-sentinel-bg font-bold'
-                        : 'bg-sentinel-card text-sentinel-subtext hover:text-sentinel-text border border-sentinel-border'
-                    }`}
+                    className={`px-4 py-2 text-xs rounded tracking-widest uppercase transition-all ${activeTab === tab ? 'bg-sentinel-accent text-sentinel-bg font-bold' : 'bg-sentinel-card text-sentinel-subtext hover:text-sentinel-text border border-sentinel-border'}`}
                   >
-                    {tab === 'chart' ? '📊 LIVE CHART' :
-                     tab === 'signals' ? `🧠 SIGNALS (${selectedSignals.length})` :
-                     `📋 ALL SIGNALS (${signals.length})`}
+                    {tab === 'chart' ? '📊 LIVE CHART' : tab === 'signals' ? `🧠 SIGNALS (${selectedSignals.length})` : `📋 ALL SIGNALS (${signals.length})`}
                   </button>
                 ))}
               </div>
 
-              {/* Chart Tab */}
               {activeTab === 'chart' && selectedItem && (
                 <div className="space-y-4">
                   <LiveChart
@@ -367,46 +347,30 @@ export default function Dashboard() {
                     onBuyLineChange={(price) => handleUpdateLines(selectedSymbol, price, selectedItem.sell_line)}
                     onSellLineChange={(price) => handleUpdateLines(selectedSymbol, selectedItem.buy_line, price)}
                   />
-
-                  {/* Latest signal for this stock */}
                   {selectedSignals[0] && (
                     <div>
-                      <div className="text-xs text-sentinel-subtext tracking-widest uppercase mb-3">
-                        LATEST SIGNAL
-                      </div>
+                      <div className="text-xs text-sentinel-subtext tracking-widest uppercase mb-3">LATEST SIGNAL</div>
                       <SignalCard signal={selectedSignals[0]} />
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Signals for selected stock */}
               {activeTab === 'signals' && (
                 <div className="space-y-3">
-                  <div className="text-xs text-sentinel-subtext tracking-widest uppercase mb-3">
-                    SIGNAL HISTORY — {selectedSymbol}
-                  </div>
+                  <div className="text-xs text-sentinel-subtext tracking-widest uppercase mb-3">SIGNAL HISTORY — {selectedSymbol}</div>
                   {selectedSignals.length === 0 ? (
-                    <div className="text-center text-sentinel-muted py-12 text-xs">
-                      No signals yet — waiting for next poll cycle
-                    </div>
+                    <div className="text-center text-sentinel-muted py-12 text-xs">No signals yet — waiting for next poll cycle</div>
                   ) : (
-                    selectedSignals.map(signal => (
-                      <SignalCard key={signal.id} signal={signal} compact />
-                    ))
+                    selectedSignals.map(signal => <SignalCard key={signal.id} signal={signal} compact />)
                   )}
                 </div>
               )}
 
-              {/* All signals */}
               {activeTab === 'all_signals' && (
                 <div className="space-y-2">
-                  <div className="text-xs text-sentinel-subtext tracking-widest uppercase mb-3">
-                    ALL SIGNAL HISTORY
-                  </div>
-                  {signals.map(signal => (
-                    <SignalCard key={signal.id} signal={signal} compact />
-                  ))}
+                  <div className="text-xs text-sentinel-subtext tracking-widest uppercase mb-3">ALL SIGNAL HISTORY</div>
+                  {signals.map(signal => <SignalCard key={signal.id} signal={signal} compact />)}
                 </div>
               )}
             </>

@@ -1,21 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createServerClient } from '@supabase/ssr'
+import { createClient } from '@supabase/supabase-js'
 
 function getSupabase(req: NextRequest) {
-  return createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    {
-      cookies: {
-        getAll() { return req.cookies.getAll() },
-        setAll() {},
-      },
-    }
-  )
+  const token = req.headers.get('authorization')?.replace('Bearer ', '')
+  return {
+    token,
+    supabase: createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      { global: { headers: { Authorization: `Bearer ${token}` } } }
+    )
+  }
 }
 
 export async function GET(req: NextRequest) {
-  const supabase = getSupabase(req)
+  const { token, supabase } = getSupabase(req)
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
@@ -30,7 +31,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  const supabase = getSupabase(req)
+  const { token, supabase } = getSupabase(req)
+  if (!token) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
