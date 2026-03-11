@@ -11,7 +11,7 @@ interface ChartProps {
   threeYearHigh: number | null
   onBuyLineChange: (price: number) => void
   onSellLineChange: (price: number) => void
-  getToken: () => Promise<string | undefined>  // ← NEW
+  getToken: () => Promise<string | undefined>
 }
 
 interface ChartBar {
@@ -62,35 +62,51 @@ export default function LiveChart({
 
       const chart = createChart(chartContainerRef.current!, {
         width: chartContainerRef.current!.clientWidth,
-        height: 420,
+        height: 460,
         layout: {
-          background: { type: ColorType.Solid, color: '#0f1629' },
-          textColor: '#8899aa',
-          fontFamily: 'Space Mono, monospace',
-          fontSize: 11,
+          background: { type: ColorType.Solid, color: '#fafaf8' },
+          textColor: '#1a1916',          // Controls time scale + general text
+          fontFamily: "'Bricolage Grotesque', 'DM Mono', monospace",
+          fontSize: 12,
         },
         grid: {
-          vertLines: { color: '#1e2d4a', style: LineStyle.Dotted },
-          horzLines: { color: '#1e2d4a', style: LineStyle.Dotted },
+          vertLines: { color: '#e8e6e0', style: LineStyle.Dotted },
+          horzLines: { color: '#e8e6e0', style: LineStyle.Dotted },
         },
         crosshair: {
           mode: CrosshairMode.Normal,
-          vertLine: { color: '#00d4ff44', style: LineStyle.Dashed, labelBackgroundColor: '#141d35' },
-          horzLine: { color: '#00d4ff44', style: LineStyle.Dashed, labelBackgroundColor: '#141d35' },
+          vertLine: {
+            color: 'rgba(37, 99, 235, 0.4)',
+            style: LineStyle.Dashed,
+            labelBackgroundColor: '#eff4ff',
+          },
+          horzLine: {
+            color: 'rgba(37, 99, 235, 0.4)',
+            style: LineStyle.Dashed,
+            labelBackgroundColor: '#eff4ff',
+          },
         },
-        rightPriceScale: { borderColor: '#1e2d4a', textColor: '#8899aa' },
-        timeScale: { borderColor: '#1e2d4a', timeVisible: true, secondsVisible: false },
+        rightPriceScale: {
+          borderColor: '#e8e6e0',
+          textColor: '#6b6860',
+          scaleMargins: { top: 0.08, bottom: 0.12 },
+        },
+        timeScale: {
+          borderColor: '#e8e6e0',
+          timeVisible: true,
+          secondsVisible: false,
+        },
         handleScroll: { mouseWheel: true, pressedMouseMove: true },
         handleScale: { mouseWheel: true, pinch: true },
       })
 
       const series = chart.addCandlestickSeries({
-        upColor: '#00ff88',
-        downColor: '#ff3d5a',
-        borderUpColor: '#00ff88',
-        borderDownColor: '#ff3d5a',
-        wickUpColor: '#00ff8880',
-        wickDownColor: '#ff3d5a80',
+        upColor: '#16a34a',
+        downColor: '#dc2626',
+        borderUpColor: '#16a34a',
+        borderDownColor: '#dc2626',
+        wickUpColor: 'rgba(22, 163, 74, 0.65)',
+        wickDownColor: 'rgba(220, 38, 38, 0.65)',
       })
 
       chartRef.current = chart
@@ -112,6 +128,9 @@ export default function LiveChart({
     const cleanup = initChart()
     return () => { cleanup.then(fn => fn?.()) }
   }, [])
+
+  // ── All the rest of your logic stays exactly the same ──
+  // (loadData, price lines, ATH lines, live updates, prompts, etc.)
 
   useEffect(() => {
     if (!seriesRef.current) return
@@ -160,15 +179,21 @@ export default function LiveChart({
       if (sellLineRef.current) { try { seriesRef.current.removePriceLine(sellLineRef.current) } catch {} }
       if (buyLine) {
         buyLineRef.current = seriesRef.current.createPriceLine({
-          price: buyLine, color: '#00ff88', lineWidth: 2,
-          lineStyle: LineStyle.Dashed, axisLabelVisible: true,
+          price: buyLine,
+          color: '#16a34a', // --green
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
           title: `BUY ▶ PKR ${buyLine.toFixed(2)}`,
         })
       }
       if (sellLine) {
         sellLineRef.current = seriesRef.current.createPriceLine({
-          price: sellLine, color: '#ff3d5a', lineWidth: 2,
-          lineStyle: LineStyle.Dashed, axisLabelVisible: true,
+          price: sellLine,
+          color: '#dc2626', // --red
+          lineWidth: 2,
+          lineStyle: LineStyle.Dashed,
+          axisLabelVisible: true,
           title: `SELL ▶ PKR ${sellLine.toFixed(2)}`,
         })
       }
@@ -184,15 +209,21 @@ export default function LiveChart({
       if (threeYrLineRef.current) { try { seriesRef.current.removePriceLine(threeYrLineRef.current) } catch {} }
       if (allTimeHigh) {
         athLineRef.current = seriesRef.current.createPriceLine({
-          price: allTimeHigh, color: '#ffcc00', lineWidth: 1,
-          lineStyle: LineStyle.Dotted, axisLabelVisible: true,
+          price: allTimeHigh,
+          color: '#d97706', // --yellow
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
           title: `ATH ${allTimeHigh.toFixed(2)}`,
         })
       }
       if (threeYearHigh && threeYearHigh !== allTimeHigh) {
         threeYrLineRef.current = seriesRef.current.createPriceLine({
-          price: threeYearHigh, color: '#ffcc0080', lineWidth: 1,
-          lineStyle: LineStyle.Dotted, axisLabelVisible: true,
+          price: threeYearHigh,
+          color: 'rgba(217, 119, 6, 0.55)', // faded yellow
+          lineWidth: 1,
+          lineStyle: LineStyle.Dotted,
+          axisLabelVisible: true,
           title: `3YR HIGH ${threeYearHigh.toFixed(2)}`,
         })
       }
@@ -241,64 +272,101 @@ export default function LiveChart({
   }
 
   return (
-    <div className="bg-sentinel-surface border border-sentinel-border rounded-lg overflow-hidden">
-      <div className="flex items-center justify-between px-5 py-4 border-b border-sentinel-border">
+    <div className="bg-white border border-[#e8e6e0] rounded-xl overflow-hidden shadow-sm">
+      {/* Header bar */}
+      <div className="flex items-center justify-between px-5 py-4 border-b border-[#e8e6e0] bg-[#fafaf8]">
         <div className="flex items-center gap-4">
           <div>
-            <div className="font-display text-2xl text-sentinel-text tracking-widest">{symbol}</div>
+            <div className="font-bold text-2xl text-[#1a1916] tracking-tight">{symbol}</div>
             {currentPrice && (
               <div className="flex items-center gap-3 mt-1">
-                <span className="text-xl font-bold text-sentinel-text">PKR {currentPrice.toFixed(2)}</span>
-                <span className={`text-sm font-bold ${priceChange >= 0 ? 'text-sentinel-green' : 'text-sentinel-red'}`}>
+                <span className="text-xl font-semibold text-[#1a1916]">
+                  PKR {currentPrice.toFixed(2)}
+                </span>
+                <span
+                  className={`text-sm font-semibold ${
+                    priceChange >= 0 ? 'text-[#16a34a]' : 'text-[#dc2626]'
+                  }`}
+                >
                   {priceChange >= 0 ? '▲' : '▼'} {Math.abs(priceChange).toFixed(2)}%
                 </span>
               </div>
             )}
           </div>
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-sentinel-green pulse-dot" />
-            <span className="text-xs text-sentinel-subtext tracking-widest">LIVE</span>
+
+          <div className="flex items-center gap-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#16a34a] animate-pulse" />
+            <span className="text-xs font-medium text-[#6b6860] uppercase tracking-wide">Live</span>
           </div>
         </div>
 
         <div className="flex items-center gap-3">
-          <div className="flex gap-1">
+          {/* Period buttons */}
+          <div className="flex gap-1.5">
             {(['1y', '2y', '3y'] as const).map(p => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 text-xs rounded tracking-widest uppercase transition-all ${period === p ? 'bg-sentinel-accent text-sentinel-bg font-bold' : 'bg-sentinel-card text-sentinel-subtext hover:text-sentinel-text border border-sentinel-border'}`}
-              >{p}</button>
+                className={`px-3.5 py-1.5 text-xs font-medium rounded-md transition-all ${
+                  period === p
+                    ? 'bg-[#2563eb] text-white shadow-sm'
+                    : 'bg-white text-[#6b6860] border border-[#e8e6e0] hover:border-[#a09e99] hover:text-[#1a1916]'
+                }`}
+              >
+                {p.toUpperCase()}
+              </button>
             ))}
           </div>
+
+          {/* Line buttons – more dashboard-like */}
           <button
             onClick={handleSetBuyLine}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs rounded border border-sentinel-green text-sentinel-green hover:bg-sentinel-green hover:text-sentinel-bg transition-all tracking-widest"
+            className="flex items-center gap-2 px-4 py-1.5 text-xs font-medium rounded-md border border-[#16a34a]/30 text-[#16a34a] hover:bg-[#16a34a]/10 transition-colors"
           >
-            ── BUY LINE {buyLine && <span className="opacity-70">PKR {buyLine}</span>}
+            Buy Line {buyLine && <span className="opacity-80">({buyLine.toFixed(0)})</span>}
           </button>
+
           <button
             onClick={handleSetSellLine}
-            className="flex items-center gap-2 px-3 py-1.5 text-xs rounded border border-sentinel-red text-sentinel-red hover:bg-sentinel-red hover:text-sentinel-bg transition-all tracking-widest"
+            className="flex items-center gap-2 px-4 py-1.5 text-xs font-medium rounded-md border border-[#dc2626]/30 text-[#dc2626] hover:bg-[#dc2626]/10 transition-colors"
           >
-            ── SELL LINE {sellLine && <span className="opacity-70">PKR {sellLine}</span>}
+            Sell Line {sellLine && <span className="opacity-80">({sellLine.toFixed(0)})</span>}
           </button>
         </div>
       </div>
 
+      {/* Chart area */}
       <div className="relative">
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center z-10 bg-sentinel-surface">
-            <div className="text-sentinel-subtext text-xs tracking-widest animate-pulse">LOADING CHART DATA...</div>
+          <div className="absolute inset-0 flex items-center justify-center bg-white/70 z-10">
+            <div className="text-[#6b6860] text-sm font-medium tracking-wide animate-pulse">
+              Loading chart data...
+            </div>
           </div>
         )}
         <div ref={chartContainerRef} className="w-full" />
       </div>
 
-      <div className="flex items-center gap-6 px-5 py-3 border-t border-sentinel-border text-xs text-sentinel-subtext">
-        {buyLine && <div className="flex items-center gap-2"><div className="w-6 h-0.5" style={{ borderTop: '2px dashed #00ff88' }} /><span>BUY: PKR {buyLine.toFixed(2)}</span></div>}
-        {sellLine && <div className="flex items-center gap-2"><div className="w-6 h-0.5" style={{ borderTop: '2px dashed #ff3d5a' }} /><span>SELL: PKR {sellLine.toFixed(2)}</span></div>}
-        {allTimeHigh && <div className="flex items-center gap-2"><div className="w-6 h-0.5" style={{ borderTop: '2px dotted #ffcc00' }} /><span>ATH: PKR {allTimeHigh.toFixed(2)}</span></div>}
+      {/* Footer legend */}
+      <div className="flex items-center gap-6 px-5 py-3 border-t border-[#e8e6e0] text-xs text-[#6b6860] bg-[#fafaf8]">
+        {buyLine && (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-0.5 border-t-2 border-dashed border-[#16a34a]" />
+            <span>Buy: PKR {buyLine.toFixed(2)}</span>
+          </div>
+        )}
+        {sellLine && (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-0.5 border-t-2 border-dashed border-[#dc2626]" />
+            <span>Sell: PKR {sellLine.toFixed(2)}</span>
+          </div>
+        )}
+        {allTimeHigh && (
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-0.5 border-t-2 border-dotted border-[#d97706]" />
+            <span>ATH: PKR {allTimeHigh.toFixed(2)}</span>
+          </div>
+        )}
       </div>
     </div>
   )
