@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-mono: 'Space Mono', monospace;
+  --font-display: 'Bebas Neue', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #0a0e1a;
+  color: #e2e8f0;
+  font-family: var(--font-mono);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #0f1629; }
+::-webkit-scrollbar-thumb { background: #1e2d4a; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #00d4ff44; }
+
+/* Chart container */
+.tv-chart-container {
+  position: relative;
+  width: 100%;
+}
+
+/* Price line tooltip */
+.price-line-label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* Glow effects */
+.glow-green { box-shadow: 0 0 20px rgba(0, 255, 136, 0.2); }
+.glow-red { box-shadow: 0 0 20px rgba(255, 61, 90, 0.2); }
+.glow-cyan { box-shadow: 0 0 20px rgba(0, 212, 255, 0.2); }
+.glow-yellow { box-shadow: 0 0 20px rgba(255, 204, 0, 0.2); }
+
+/* Verdict badges */
+.verdict-buy {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
+  border: 1px solid rgba(0, 255, 136, 0.3);
+}
+.verdict-sell {
+  color: #ff3d5a;
+  background: rgba(255, 61, 90, 0.1);
+  border: 1px solid rgba(255, 61, 90, 0.3);
+}
+.verdict-hold {
+  color: #ffcc00;
+  background: rgba(255, 204, 0, 0.1);
+  border: 1px solid rgba(255, 204, 0, 0.3);
+}
+.verdict-neutral {
+  color: #8899aa;
+  background: rgba(136, 153, 170, 0.1);
+  border: 1px solid rgba(136, 153, 170, 0.3);
+}
+.verdict-error {
+  color: #ff6b6b;
+  background: rgba(255, 107, 107, 0.1);
+  border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+/* Scan line animation */
+@keyframes scanline {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100vh); }
+}
+
+.scanline::after {
+  content: '';
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  background: linear-gradient(transparent, rgba(0, 212, 255, 0.1), transparent);
+  animation: scanline 8s linear infinite;
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* Pulse dot */
+@keyframes pulseDot {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.8); }
+}
+
+.pulse-dot {
+  animation: pulseDot 1.5s ease-in-out infinite;
+}
+
+/* Number ticker */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.number-tick { animation: countUp 0.2s ease-out; }
+
+/* Loading skeleton */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.skeleton {
+  background: linear-gradient(90deg, #141d35 25%, #1e2d4a 50%, #141d35 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s infinite;
+  border-radius: 4px;
+}
